@@ -1,40 +1,51 @@
 import os
+import argparse
 from dotenv import load_dotenv
 from embedchain import App
-import argparse
 
-# Lataa ympäristömuuttujat (esim. OpenAI API -avain .env-tiedostosta)
+# Dokumenttityyppien tuki
+SUPPORTED_EXTENSIONS = [".txt", ".csv", ".pdf", ".docx"]
+
+# Ladataan API-avaimet ym.
 load_dotenv()
+
+def add_source(app, source):
+    # URL
+    if source.startswith("http://") or source.startswith("https://"):
+        print(f"Lisätään nettisivu: {source}")
+        app.add(source)
+    # Tiedostot
+    else:
+        ext = os.path.splitext(source)[1].lower()
+        if ext in SUPPORTED_EXTENSIONS:
+            print(f"Lisätään tiedosto: {source}")
+            app.add(source)
+        else:
+            print(f"⚠️ Ei tuettu tiedostopääte: {source}")
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Anna tiedoston nimi tai URL ja kysy siitä kysymys."
+        description="Anna lähteitä (txt, csv, pdf, docx, url) ja kysy/vie tulos tiedostoon."
     )
-    parser.add_argument("sources", nargs="+", help="Tiedoston nimi tai URL (tai useampi)")
-    parser.add_argument("-q", "--query", help="Kysymys sisällöstä")
-    parser.add_argument("-f", "--file", help="Tallennetaan vastaus tiedostoon")
+    parser.add_argument("sources", nargs="+", help="Tiedostot ja/tai url:t")
+    parser.add_argument("-q", "--query", help="Kysymys/summarointi")
+    parser.add_argument("-f", "--file", help="Tallenna tulos tiedostoon")
     args = parser.parse_args()
 
-    # Luo Embedchain-sovellus
     app = App()
 
-    # Lisää lähteet (tiedostot tai URLit)
-    for src in args.sources:
-        print(f"📥 Lisätään tietopankkiin: {src}")
-        app.add(src)
+    for source in args.sources:
+        add_source(app, source)
 
-    # Käyttäjän kysymys tai tiivistelmä
-    question = args.query if args.query else "Tee tiivistelmä annetusta sisällöstä."
-    print(f"💬 Kysymys: {question}")
+    question = args.query or "Tiivistä annetut lähteet."
     response = app.query(question)
 
-    # Tulosta tai tallenna
     if args.file:
         with open(args.file, "w", encoding="utf-8") as f:
             f.write(response)
         print(f"✅ Vastaus tallennettu tiedostoon: {args.file}")
     else:
-        print("🧠 Vastaus:")
+        print("\n🧠 Vastaus:")
         print(response)
 
 if __name__ == "__main__":
