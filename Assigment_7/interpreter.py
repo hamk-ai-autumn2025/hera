@@ -1,17 +1,20 @@
 import sounddevice as sd
 import soundfile as sf
 import speech_recognition as sr
-from googletrans import Translator
+import openai
 from gtts import gTTS
 import pygame
 import time
 import os
 
 fs = 44100
-sekuntia = 8
+sekuntia = 5
 filename = "test.wav"
 
-# Kielisanakirja: puhutun nimen ja GoogleTrans/Gtts-koodin välinen yhteys
+# Saat avaimen ympäristömuuttujasta
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Kielisanakirja: mitä sanotaan ääneen, mikä kielikoodi
 language_map = {
     "englanti": ("en", "English"),
     "ranska": ("fr", "French"),
@@ -20,7 +23,7 @@ language_map = {
     "ruotsi": ("sv", "Swedish")
 }
 
-pygame.mixer.init()  # Alusta pygame kerran
+pygame.mixer.init()
 
 def get_target_language():
     while True:
@@ -67,25 +70,39 @@ while True:
             target_lang, target_lang_name = get_target_language()
             continue
 
-        translator = Translator()
-        translation = translator.translate(text, src='fi', dest=target_lang)
-        print(f"Käännös ({target_lang_name}):", translation.text)
-
-        tts = gTTS(translation.text, lang=target_lang)
-        tts.save("translation.mp3")
-        print(f"Luetaan käännös ääneen ({target_lang_name})...")
-
-        pygame.mixer.music.load("translation.mp3")
-        pygame.mixer.music.play()
-        while pygame.mixer.music.get_busy():
-            time.sleep(0.5)
-        pygame.mixer.music.unload()
-        time.sleep(0.1)
+        # --- Käännös OpenAI:n avulla ---
+        prompt = f"Käännä seuraava lause {target_lang_name.lower()}ksi: {text}"
         try:
-            os.remove("translation.mp3")
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=100
+            )
+            translation = response.choices[0].message.content.strip()
+            print(f"Käännös ({target_lang_name}):", translation)
         except Exception as e:
-            print("Tiedoston poisto epäonnistui:", e)
+            print("Käännös epäonnistui:", e)
+            translation = ""
+
+        if translation:
+            tts = gTTS(translation, lang=target_lang)
+            tts.save("translation.mp3")
+            print(f"Luetaan käännös ääneen ({target_lang_name})...")
+
+            pygame.mixer.music.load("translation.mp3")
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.5)
+            pygame.mixer.music.unload()
+            time.sleep(0.1)
+            try:
+                os.remove("translation.mp3")
+            except Exception as e:
+                print("Tiedoston poisto epäonnistui:", e)
+        else:
+            print("Käännöstä ei saatu.")
+
     else:
         print("Puhetta ei tunnistettu.")
-    time.sleep(1)
 
+    time.sleep(1)
