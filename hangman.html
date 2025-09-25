@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hangman — Pink Theme</title>
+  <style>
+    :root {
+      --bg: #fce7f3; /* bubble gum pink */
+      --panel: #fbcfe8;
+      --muted: #9d174d;
+      --text: #831843;
+      --accent: #db2777;
+      --danger: #be123c;
+      --ok: #15803d;
+      --shadow: 0 10px 30px rgba(0,0,0,.15);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      line-height: 1.45;
+    }
+    .app { width: min(100%, 980px); padding: 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: .5px; }
+    .stats { display: flex; gap: 12px; font-size: 14px; color: var(--muted); }
+    .stat { background: rgba(255,255,255,.5); padding: 8px 12px; border-radius: 999px; }
+    .board { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
+    @media (max-width: 820px) { .board { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid rgba(0,0,0,.1); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+    #gallows { width: 100%; height: 320px; display: block; background: #f9a8d4; border-radius: 12px; }
+    .word { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: clamp(22px, 4vw, 34px); letter-spacing: 10px; text-align: center; margin: 10px 0 4px; }
+    .hint { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+    .keyboard { display: grid; grid-template-columns: repeat(13, 1fr); gap: 8px; margin-top: 12px; }
+    @media (max-width: 560px) { .keyboard { grid-template-columns: repeat(9, 1fr); } }
+    .key { padding: 10px 0; border-radius: 10px; background: #f9a8d4; border: 1px solid rgba(0,0,0,.1); color: var(--text); cursor: pointer; user-select: none; transition: transform .04s ease, background .2s ease, border-color .2s ease; font-weight: 600; }
+    .key:hover { background: #fbcfe8; }
+    .key:active { transform: translateY(1px) scale(0.98); }
+    .key[disabled] { opacity: .45; cursor: not-allowed; }
+    .key.wrong { border-color: rgba(190,18,60,.7); color: #be123c; }
+    .key.right { border-color: rgba(21,128,61,.7); color: #15803d; }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.5); border: 1px solid rgba(0,0,0,.1); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    button.primary, button.ghost { padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(0,0,0,.1); background: rgba(255,255,255,.5); color: var(--text); cursor: pointer; font-weight: 700; }
+    button.primary:hover, button.ghost:hover { filter: brightness(1.15); }
+    button.primary:active, button.ghost:active { transform: translateY(1px); }
+    .msg { text-align: center; font-size: 18px; margin-top: 8px; min-height: 28px; }
+    .msg.win { color: var(--ok); }
+    .msg.lose { color: var(--danger); }
+    footer { margin-top: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+    a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Hangman game">
+    <header>
+      <h1>Hangman</h1>
+      <div class="stats" aria-live="polite">
+        <span class="stat">Wins: <strong id="wins">0</strong></span>
+        <span class="stat">Losses: <strong id="losses">0</strong></span>
+        <span class="stat">Streak: <strong id="streak">0</strong></span>
+      </div>
+    </header>
+    <div class="board">
+      <section class="panel">
+        <canvas id="gallows" width="360" height="320"></canvas>
+        <div class="msg" id="message"></div>
+        <div class="bar">
+          <div class="chips" id="wrongLetters"></div>
+          <div class="controls">
+            <button class="ghost" id="hintBtn">💡 Hint</button>
+            <button class="primary" id="newBtn">🔄 Play Again</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="hint" id="hint"></div>
+        <div class="word" id="word"></div>
+        <div class="keyboard" id="keyboard"></div>
+        <p class="hint">Type on your keyboard or tap the letters.</p>
+      </section>
+    </div>
+    <footer>Built with HTML5 Canvas + JavaScript</footer>
+  </div>
+  <script>
+    const WORDS = [["python","Programming language"],["javascript","Language of the web"],["hangman","Meta word"],["versiot","Your company name"]];
+    const state={word:"",hint:"",guessed:new Set(),wrong:new Set(),maxMistakes:6,over:false};
+    const els={canvas:document.getElementById("gallows"),msg:document.getElementById("message"),wrong:document.getElementById("wrongLetters"),hint:document.getElementById("hint"),word:document.getElementById("word"),kb:document.getElementById("keyboard"),newBtn:document.getElementById("newBtn"),hintBtn:document.getElementById("hintBtn"),wins:document.getElementById("wins"),losses:document.getElementById("losses"),streak:document.getElementById("streak")};
+    const stats={get wins(){return+(localStorage.getItem('hm_wins')||0)},set wins(v){localStorage.setItem('hm_wins',v)},get losses(){return+(localStorage.getItem('hm_losses')||0)},set losses(v){localStorage.setItem('hm_losses',v)},get streak(){return+(localStorage.getItem('hm_streak')||0)},set streak(v){localStorage.setItem('hm_streak',v)},render(){els.wins.textContent=this.wins;els.losses.textContent=this.losses;els.streak.textContent=this.streak;}};
+    const ctx=els.canvas.getContext('2d');
+    function line(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+    function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();}
+    function drawBase(){ctx.clearRect(0,0,els.canvas.width,els.canvas.height);ctx.lineWidth=6;ctx.strokeStyle='#831843';line(30,300,330,300);line(80,300,80,60);line(80,60,220,60);line(220,60,220,90);}
+    function drawMistakes(n){if(n>0)circle(220,120,30);if(n>1)line(220,150,220,220);if(n>2)line(220,170,190,200);if(n>3)line(220,170,250,200);if(n>4)line(220,220,190,260);if(n>5)line(220,220,250,260);}
+    const AtoZ=Array.from({length:26},(_,i)=>String.fromCharCode(65+i));
+    function buildKeyboard(){els.kb.innerHTML='';for(const L of AtoZ){const btn=document.createElement('button');btn.className='key';btn.textContent=L;btn.onclick=()=>guess(L.toLowerCase());els.kb.appendChild(btn);}}
+    function updateKeyboardStyles(){for(const btn of els.kb.querySelectorAll('.key')){const l=btn.textContent.toLowerCase();btn.disabled=state.guessed.has(l)||state.wrong.has(l)||state.over;btn.classList.toggle('right',state.guessed.has(l));btn.classList.toggle('wrong',state.wrong.has(l));}}
+    function setMessage(t,c=''){els.msg.className='msg '+c;els.msg.textContent=t;}
+    function renderWord(){els.word.innerHTML=state.word.split('').map(ch=>ch===' ' ? '&nbsp;&nbsp;':(state.guessed.has(ch)?ch.toUpperCase():'_')).join(' ');}
+    function renderWrong(){els.wrong.innerHTML='';for(const l of state.wrong){const chip=document.createElement('span');chip.className='chip';chip.textContent=l.toUpperCase();els.wrong.appendChild(chip);}}
+    function newGame(){const [w,h]=WORDS[Math.floor(Math.random()*WORDS.length)];state.word=w;state.hint=h;state.guessed.clear();state.wrong.clear();state.over=false;drawBase();drawMistakes(0);renderWord();renderWrong();updateKeyboardStyles();els.hint.textContent='';setMessage('Guess the word!');stats.render();}
+    function endGame(win){state.over=true;updateKeyboardStyles();if(win){setMessage('You win!','win');stats.wins=stats.wins+1;stats.streak=Math.max(1,stats.streak+1);}else{setMessage('You lost.','lose');stats.losses=stats.losses+1;stats.streak=0;}stats.render();}
+    function guess(l){if(state.over)return;if(state.guessed.has(l)||state.wrong.has(l))return;if(state.word.includes(l)){state.guessed.add(l);renderWord();if(state.word.split('').every(ch=>ch===' '||state.guessed.has(ch)))endGame(true);}else{state.wrong.add(l);renderWrong();drawBase();drawMistakes(state.wrong.size);if(state.wrong.size>=state.maxMistakes){endGame(false);}else{setMessage(`${state.maxMistakes-state.wrong.size} guesses left`);}}updateKeyboardStyles();}
+    window.onkeydown=e=>{const k=e.key.toLowerCase();if(k.match(/^[a-z]$/))guess(k);else if(e.key==='Enter')newGame();};
+    els.newBtn.onclick=newGame;els.hintBtn.onclick=()=>{els.hint.textContent='Hint: '+state.hint;};
+    buildKeyboard();newGame();
+  </script>
+</body>
+</html>
