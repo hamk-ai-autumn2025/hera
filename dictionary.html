@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>JSON Dictionary (Glitter Edition ✨)</title>
+  <title>Dictionary with JSON ✨</title>
   <style>
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #fce1e4, #e8f3fc);
+      background: radial-gradient(circle at top, #1a237e, #0d0d2b);
       min-height: 100vh;
       display: flex;
       justify-content: center;
@@ -15,26 +15,27 @@
       padding: 40px 16px;
       overflow: hidden;
       position: relative;
+      color: #eee;
     }
-    /* Glitter background */
-    .glitter {
+
+    /* Twinkling stars */
+    .star {
       position: absolute;
-      width: 4px; height: 4px;
+      width: 3px; height: 3px;
       background: white;
       border-radius: 50%;
-      opacity: 0.8;
-      animation: sparkle 3s linear infinite;
+      opacity: 0.6;
+      animation: twinkle 2s infinite;
     }
-    @keyframes sparkle {
-      from { transform: translateY(0); opacity: 0.8; }
-      50% { opacity: 0.2; }
-      to { transform: translateY(100vh); opacity: 0; }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.2; }
+      50% { opacity: 1; }
     }
 
     .container {
-      background: #ffffffdd;
+      background: #1e1e2fdd;
       border-radius: 20px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
       padding: 30px;
       max-width: 800px;
       width: 100%;
@@ -50,7 +51,7 @@
       font-size: 1.8rem;
       margin: 0 0 20px;
       text-align: center;
-      color: #4b4453;
+      color: #ffecb3;
     }
     .row {
       display: flex;
@@ -63,9 +64,11 @@
       flex: 1;
       min-width: 220px;
       padding: 12px 14px;
-      border: 2px solid #ccc;
+      border: 2px solid #444;
       border-radius: 12px;
       font-size: 1rem;
+      background: #2b2d42;
+      color: #fff;
     }
     button {
       padding: 12px 16px;
@@ -79,21 +82,8 @@
     }
     button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
     }
-    /* Sparkle effect inside button */
-    button::after {
-      content: "✨";
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%) scale(0);
-      transition: transform 0.3s ease;
-    }
-    button:hover::after {
-      transform: translateY(-50%) scale(1);
-    }
-
     button.primary { background: #a0d2eb; color: #333; }
     button.secondary { background: #ffdac1; color: #333; }
 
@@ -103,8 +93,8 @@
     }
     #jsonView {
       display: none;
-      background: #2b2d42;
-      color: #edf2f4;
+      background: #0b1020;
+      color: #e6edf3;
       padding: 20px;
       border-radius: 14px;
       overflow:auto;
@@ -115,26 +105,27 @@
       border-radius: 12px;
       padding: 12px 16px;
       margin: 10px 0;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
-    .word { background: #c5f6fa; }
-    .definition { background: #ffe5ec; }
-    .synonyms { background: #e2f0cb; }
-    .antonyms { background: #fde2e4; }
-    .examples { background: #fff1e6; }
-    .label { font-weight: bold; color: #333; }
+    .word { background: #4ecdc4; color:#000; }
+    .definition { background: #ffe5ec; color:#000; }
+    .synonyms { background: #e2f0cb; color:#000; }
+    .antonyms { background: #fde2e4; color:#000; }
+    .examples { background: #fff1e6; color:#000; }
+    .label { font-weight: bold; }
   </style>
 </head>
 <body>
-  <!-- Glitter elements will be injected here -->
+  <!-- Stars will be generated here -->
   <div class="container">
-    <h1>📖 JSON Dictionary ✨</h1>
+    <h1>📖 Dictionary with JSON</h1>
     <div class="row">
       <input id="word" placeholder="Kirjoita englanninkielinen sana (esim. programming)" />
     </div>
     <div class="row">
       <button class="primary" id="gen">Hae</button>
       <button class="secondary" id="toggle">Näytä JSON</button>
+      <button class="secondary" id="download">Lataa JSON</button>
     </div>
     <div id="cardView"></div>
     <pre id="jsonView">{}</pre>
@@ -142,6 +133,7 @@
 
   <script>
     let showJson = false;
+    let lastData = null;
 
     async function buildJson(wordRaw) {
       const w = (wordRaw || "").trim();
@@ -188,6 +180,7 @@
     document.getElementById('gen').addEventListener('click', async () => {
       document.getElementById('cardView').innerHTML = "⏳ Haetaan...";
       const data = await buildJson(document.getElementById('word').value);
+      lastData = data;
 
       document.getElementById('jsonView').textContent = JSON.stringify(data, null, 4);
       document.getElementById('cardView').innerHTML = renderCard(data);
@@ -211,15 +204,26 @@
       }
     });
 
-    // Create glitter particles
-    for (let i = 0; i < 40; i++) {
-      const g = document.createElement('div');
-      g.className = 'glitter';
-      g.style.left = Math.random() * 100 + 'vw';
-      g.style.top = Math.random() * -100 + 'vh';
-      g.style.animationDuration = (2 + Math.random() * 3) + 's';
-      g.style.opacity = Math.random();
-      document.body.appendChild(g);
+    document.getElementById('download').addEventListener('click', () => {
+      if (!lastData) return;
+      const blob = new Blob([JSON.stringify(lastData, null, 4)], { type: "application/json;charset=utf-8" });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${lastData.word || "entry"}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+
+    // Generate stars
+    for (let i = 0; i < 60; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = Math.random() * 100 + 'vw';
+      star.style.top = Math.random() * 100 + 'vh';
+      star.style.animationDuration = (1.5 + Math.random() * 3) + 's';
+      star.style.opacity = Math.random();
+      document.body.appendChild(star);
     }
   </script>
 </body>
